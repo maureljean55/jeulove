@@ -125,6 +125,14 @@
   .btn:active { transform: scale(.98); }
   .btn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
   .btn.ghost { background: transparent; border: 1px solid var(--card-border); box-shadow: none; color: var(--muted); margin-top: 10px; font-weight: 500; }
+  .back {
+    display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13.5px; color: var(--muted);
+    background: none; border: 0; padding: 4px 0; margin-bottom: 14px; cursor: pointer; transition: color .2s;
+  }
+  .back:hover { color: var(--text); }
+  .letter p { color: var(--text); opacity: .88; font-size: 15.5px; line-height: 1.65; margin-bottom: 14px; }
+  .letter p.soft { color: var(--muted); opacity: 1; font-size: 14.5px; }
+  .signature { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 22px; color: var(--accent-2); margin: 4px 0 26px; }
   .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 14px; }
 
   .summary { display: grid; gap: 12px; margin: 6px 0 24px; max-height: 44vh; overflow-y: auto; padding-right: 4px; }
@@ -148,10 +156,9 @@ const CONFIG = {
   // Ton prénom (apparaît dans les questions)
   monPrenom: "Maurel"
 };
-// Astuce : ajoute ?pour=Prénom au lien pour que le jeu l'appelle par son prénom.
 /* ========================================= */
 
-const her = new URLSearchParams(location.search).get("pour");
+const her = new URLSearchParams(location.search).get("pour") || "Myriam";
 const me = CONFIG.monPrenom;
 
 const STEPS = [
@@ -263,6 +270,7 @@ const STEPS = [
 
 const answers = {};
 const questions = STEPS.filter(s => s.id);
+const state = {};
 let current = 0;
 
 const stepsEl = document.getElementById("steps");
@@ -291,14 +299,26 @@ function render() {
 }
 
 function next() { current++; render(); burst(6); }
+function prev() { current--; render(); }
+function backButton() {
+  const b = el(`<button class="back" type="button">← Retour</button>`);
+  b.onclick = prev;
+  return b;
+}
 
 function renderIntro() {
+  const name = escapeHtml(her);
   const n = el(`<div>
-    <div class="eyebrow">Un petit jeu ${her ? "pour " + escapeHtml(her) : "rien que pour toi"}</div>
-    <h1>Juste <em>entre nous</em>…</h1>
-    <p class="sub">${questions.length} questions. Aucune bonne ou mauvaise réponse — seulement des vraies.
-    À la fin, c'est toi qui décides de m'envoyer tes réponses… ou pas.</p>
-    <button class="btn">J'ose 😏</button>
+    <div class="eyebrow">Pour ma princesse ${name} 👑</div>
+    <h1>${name}, <em>ma princesse</em>…</h1>
+    <div class="letter">
+      <p>Depuis que tu es entrée dans ma vie, quelque chose a changé. Un sourire en plus quand ton nom s'affiche sur mon téléphone,
+      une pensée pour toi quand la nuit tombe, cette envie un peu folle de savoir ce qui se passe dans ta jolie tête.</p>
+      <p>Alors j'ai préparé ce petit jeu, rien que pour toi. ${questions.length} questions, pas de bonne ou de mauvaise réponse — juste les tiennes, les vraies.</p>
+      <p class="soft">Tu peux revenir en arrière et changer d'avis quand tu veux. Et à la fin, c'est toi qui décides de m'envoyer tes réponses… ou pas.</p>
+    </div>
+    <div class="signature">— ${escapeHtml(me)}</div>
+    <button class="btn">Je suis prête 😏</button>
     <p class="hint">Ça prend 2 minutes. Et ça pourrait tout changer.</p>
   </div>`);
   n.querySelector(".btn").onclick = next;
@@ -313,14 +333,15 @@ function renderQuestion(s) {
     <div class="body"></div>
     <button class="btn next">${current === STEPS.length - 2 ? "Voilà, c'est dit" : "Suivant"}</button>
   </div>`);
+  n.prepend(backButton());
   const body = n.querySelector(".body");
   const btn = n.querySelector(".next");
 
   if (s.type === "single" || s.type === "multi") {
     const wrap = el(`<div class="options ${s.grid ? "grid2" : ""}"></div>`);
-    const chosen = new Set();
+    const chosen = new Set(state[s.id] || []);
     s.options.forEach(([emo, label]) => {
-      const b = el(`<button class="opt"><span class="emo">${emo}</span><span>${label}</span></button>`);
+      const b = el(`<button class="opt${chosen.has(label) ? " on" : ""}"><span class="emo">${emo}</span><span>${label}</span></button>`);
       b.onclick = () => {
         if (s.type === "single") {
           wrap.querySelectorAll(".opt").forEach(o => o.classList.remove("on"));
@@ -328,6 +349,7 @@ function renderQuestion(s) {
         }
         if (chosen.has(label)) { chosen.delete(label); b.classList.remove("on"); }
         else { chosen.add(label); b.classList.add("on"); }
+        state[s.id] = [...chosen];
         answers[s.id] = [...chosen].join(", ");
         btn.disabled = chosen.size === 0;
         if (s.type === "single") setTimeout(() => btn.focus({ preventScroll: true }), 50);
@@ -335,18 +357,19 @@ function renderQuestion(s) {
       wrap.appendChild(b);
     });
     body.appendChild(wrap);
-    btn.disabled = true;
+    btn.disabled = chosen.size === 0;
   }
 
   if (s.type === "slider") {
     const w = el(`<div class="slider-wrap">
       <div class="big-val"></div>
       <div class="val-label"></div>
-      <input type="range" min="${s.min}" max="${s.max}" value="${s.start}" step="1">
+      <input type="range" min="${s.min}" max="${s.max}" value="${state[s.id] ?? s.start}" step="1">
     </div>`);
     const r = w.querySelector("input"), big = w.querySelector(".big-val"), lab = w.querySelector(".val-label");
     const upd = () => {
       const v = +r.value;
+      state[s.id] = v;
       big.textContent = s.emojis ? s.emojis[v] : v;
       lab.textContent = s.labels[v];
       r.style.setProperty("--p", ((v - s.min) / (s.max - s.min) * 100) + "%");
@@ -358,7 +381,8 @@ function renderQuestion(s) {
 
   if (s.type === "text") {
     const t = el(`<textarea placeholder="${s.placeholder}"></textarea>`);
-    t.oninput = () => { answers[s.id] = t.value.trim(); };
+    t.value = state[s.id] || "";
+    t.oninput = () => { state[s.id] = t.value; answers[s.id] = t.value.trim(); };
     body.appendChild(t);
   }
 
@@ -384,6 +408,7 @@ function renderEnd() {
     <button class="btn send">Envoyer mes réponses à ${escapeHtml(me)} 💌</button>
     <p class="hint"></p>
   </div>`);
+  n.prepend(backButton());
   const sum = n.querySelector(".summary");
   questions.forEach(q => {
     const a = answers[q.id];
