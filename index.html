@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juste entre nous…</title>
+<meta name="description" content="Un petit jeu. Réponds honnêtement.">
+<meta property="og:title" content="Juste entre nous…">
+<meta property="og:description" content="Un petit jeu rien que pour toi. Tu oses ?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14070b;
+    --bg-2: #2a0d16;
+    --card: rgba(255, 240, 243, 0.06);
+    --card-border: rgba(255, 200, 212, 0.14);
+    --text: #fbeef1;
+    --muted: #c9a3ad;
+    --accent: #ff4f7b;
+    --accent-2: #ffb199;
+    --chip: rgba(255, 255, 255, 0.05);
+    --chip-on: rgba(255, 79, 123, 0.18);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "DM Sans", system-ui, sans-serif;
+    color: var(--text);
+    background: radial-gradient(120% 90% at 50% 0%, var(--bg-2) 0%, var(--bg) 60%);
+    background-color: var(--bg);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #hearts { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .heart {
+    position: absolute; bottom: -40px; color: var(--accent); opacity: 0;
+    animation: rise linear forwards; filter: blur(0.3px);
+  }
+  @keyframes rise {
+    0% { transform: translateY(0) scale(.6) rotate(0); opacity: 0; }
+    15% { opacity: .35; }
+    100% { transform: translateY(-110vh) scale(1.1) rotate(25deg); opacity: 0; }
+  }
+
+  main {
+    position: relative; z-index: 1;
+    min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+    padding: 24px 16px;
+  }
+  .card {
+    width: 100%; max-width: 480px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 28px;
+    padding: 36px 28px 28px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 30px 80px -30px rgba(255, 60, 110, .35);
+  }
+  .step { display: none; animation: enter .6s cubic-bezier(.2,.8,.2,1); }
+  .step.active { display: block; }
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(18px) scale(.98); filter: blur(4px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+
+  .progress { height: 3px; background: rgba(255,255,255,.08); border-radius: 3px; margin-bottom: 28px; overflow: hidden; }
+  .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .6s ease; }
+  .progress.hidden { visibility: hidden; }
+
+  .eyebrow { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent-2); margin-bottom: 14px; }
+  h1, h2 {
+    font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600;
+    line-height: 1.12; letter-spacing: -.01em;
+  }
+  h1 { font-size: clamp(34px, 9vw, 46px); margin-bottom: 16px; }
+  h2 { font-size: clamp(26px, 7vw, 34px); margin-bottom: 10px; }
+  h1 em, h2 em { font-style: italic; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 15px; line-height: 1.55; margin-bottom: 26px; }
+
+  .options { display: grid; gap: 10px; margin-bottom: 22px; }
+  .opt {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; text-align: left; font: inherit; font-size: 15.5px; color: var(--text);
+    background: var(--chip); border: 1px solid var(--card-border); border-radius: 16px;
+    padding: 15px 16px; cursor: pointer; transition: all .2s ease;
+  }
+  .opt:hover { border-color: rgba(255, 79, 123, .5); transform: translateY(-1px); }
+  .opt.on { background: var(--chip-on); border-color: var(--accent); }
+  .opt .emo { font-size: 20px; width: 26px; text-align: center; flex-shrink: 0; }
+  .grid2 { grid-template-columns: 1fr 1fr; }
+  .grid2 .opt { flex-direction: column; justify-content: center; text-align: center; padding: 18px 10px; gap: 6px; }
+
+  .slider-wrap { margin: 10px 0 26px; }
+  .big-val {
+    font-family: "Cormorant Garamond", serif; font-size: 72px; font-weight: 600; text-align: center;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1;
+  }
+  .val-label { text-align: center; color: var(--muted); font-style: italic; font-size: 15px; min-height: 22px; margin: 6px 0 18px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; outline: none;
+    background: linear-gradient(90deg, var(--accent) var(--p, 50%), rgba(255,255,255,.1) var(--p, 50%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 6px rgba(255,79,123,.35); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 28px; height: 28px; border: 0; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 6px rgba(255,79,123,.35); cursor: pointer; }
+
+  textarea, input[type=text] {
+    width: 100%; font: inherit; font-size: 16px; color: var(--text);
+    background: var(--chip); border: 1px solid var(--card-border); border-radius: 16px;
+    padding: 16px; resize: none; margin-bottom: 22px; outline: none; transition: border-color .2s;
+  }
+  textarea { min-height: 120px; }
+  textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+  textarea::placeholder, input::placeholder { color: rgba(201,163,173,.6); }
+
+  .btn {
+    display: block; width: 100%; font: inherit; font-weight: 600; font-size: 16px; color: #fff;
+    background: linear-gradient(120deg, var(--accent), #ff7a8f);
+    border: 0; border-radius: 999px; padding: 17px 20px; cursor: pointer;
+    box-shadow: 0 12px 30px -10px rgba(255,79,123,.7); transition: transform .15s, opacity .2s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+  .btn.ghost { background: transparent; border: 1px solid var(--card-border); box-shadow: none; color: var(--muted); margin-top: 10px; font-weight: 500; }
+  .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 14px; }
+
+  .summary { display: grid; gap: 12px; margin: 6px 0 24px; max-height: 44vh; overflow-y: auto; padding-right: 4px; }
+  .summary div { background: var(--chip); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+  .summary b { display: block; font-weight: 500; color: var(--muted); font-size: 12.5px; margin-bottom: 4px; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
+    background: #fff; color: #2a0d16; padding: 12px 18px; border-radius: 999px; font-size: 14px; font-weight: 500;
+    transition: transform .35s ease; z-index: 5; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="hearts"></div>
+
+<main>
+  <div class="card">
+    <div class="progress hidden" id="progress"><div></div></div>
+    <div id="steps"></div>
+  </div>
+</main>
+<div class="toast" id="toast">Copié ✨</div>
+
+<script>
+/* ============ À PERSONNALISER ============ */
+const CONFIG = {
+  // Ton prénom (apparaît dans les questions)
+  monPrenom: "Maurel",
+  // Ton numéro WhatsApp au format international, sans + ni espaces (ex: "237690000000").
+  // Laisse vide "" pour qu'elle choisisse l'appli avec laquelle t'envoyer ses réponses.
+  whatsapp: ""
+};
+// Astuce : ajoute ?pour=Prénom au lien pour que le jeu l'appelle par son prénom.
+/* ========================================= */
+
+const her = new URLSearchParams(location.search).get("pour");
+const me = CONFIG.monPrenom;
+
+const STEPS = [
+  { type: "intro" },
+  {
+    id: "premiere", type: "single",
+    eyebrow: "Question 1",
+    title: `La première fois que tu m'as vu, tu t'es dit…`,
+    options: [
+      ["👀", "« Tiens… il est mignon, lui »"],
+      ["✨", "« Il a un petit quelque chose »"],
+      ["😌", "« Rien de spécial » (menteuse)"],
+      ["🙈", "Je garde ça pour moi"]
+    ]
+  },
+  {
+    id: "attire", type: "multi",
+    eyebrow: "Question 2",
+    title: `Qu'est-ce qui t'<em>attire</em> chez moi ?`,
+    sub: "Plusieurs réponses possibles. Ne sois pas timide.",
+    grid: true,
+    options: [
+      ["😏", "Mon sourire"], ["👁️", "Mon regard"],
+      ["😂", "Mon humour"], ["🎙️", "Ma voix"],
+      ["🧥", "Mon style"], ["🧠", "Ma façon de penser"],
+      ["🔥", "Mon assurance"], ["🤫", "Un truc que je ne dirai pas"]
+    ]
+  },
+  {
+    id: "note", type: "slider",
+    eyebrow: "Question 3",
+    title: `Honnêtement… tu me trouves comment ?`,
+    sub: "De 1 à 10. Je saurai si tu triches.",
+    min: 1, max: 10, start: 5,
+    labels: {
+      1: "Aïe. Ça pique.", 2: "Bon… on va dire que tu plaisantes.", 3: "Hmm, j'ai du travail.",
+      4: "Il y a du potentiel.", 5: "Pas mal, pas mal…", 6: "Plutôt mignon, avoue.",
+      7: "Tu commences à rougir là.", 8: "Ok, je te plais.", 9: "Tu es sûre que ça va ? 🥵",
+      10: "Je le savais 😌"
+    }
+  },
+  {
+    id: "message", type: "single",
+    eyebrow: "Question 4",
+    title: `Quand tu reçois un message de moi…`,
+    options: [
+      ["😊", "Je souris avant même de l'ouvrir"],
+      ["⏳", "J'attends un peu pour ne pas paraître pressée"],
+      ["💓", "Mon cœur fait un petit bond"],
+      ["😶", "Je fais semblant que ça ne me fait rien"]
+    ]
+  },
+  {
+    id: "pense", type: "slider",
+    eyebrow: "Question 5",
+    title: `Il t'arrive de penser à moi… ?`,
+    sub: "Même juste un peu. Même le soir.",
+    min: 0, max: 4, start: 2, showLabelOnly: true,
+    labels: {
+      0: "Jamais (vraiment ?)", 1: "Rarement", 2: "De temps en temps",
+      3: "Plus souvent que je ne l'avoue", 4: "Un peu trop, en fait"
+    },
+    emojis: { 0: "🧊", 1: "🙂", 2: "😊", 3: "😳", 4: "🔥" }
+  },
+  {
+    id: "rdv", type: "single",
+    eyebrow: "Question 6",
+    title: `Notre premier vrai rendez-vous, ce serait…`,
+    options: [
+      ["🕯️", "Un dîner aux chandelles, tout en regards"],
+      ["🌃", "Une balade de nuit, sans savoir où on va"],
+      ["🍿", "Un film… où on ne regarde pas vraiment le film"],
+      ["🍷", "Un verre, et on laisse la soirée décider"]
+    ]
+  },
+  {
+    id: "bisou", type: "single",
+    eyebrow: "Question 7",
+    title: `Si je t'<em>embrassais</em> par surprise…`,
+    options: [
+      ["🙅‍♀️", "Je te repousserais (pour la forme)"],
+      ["😌", "Je fermerais les yeux"],
+      ["💋", "Je t'embrasserais en retour"],
+      ["😏", "Il faudrait essayer pour le savoir"]
+    ]
+  },
+  {
+    id: "secret", type: "text",
+    eyebrow: "Question 8",
+    title: `Dis-moi un truc que tu n'oserais pas me dire en face.`,
+    sub: "Personne d'autre ne le lira. Promis.",
+    placeholder: "Vas-y, lâche-toi…",
+    optional: true
+  },
+  {
+    id: "chance", type: "single",
+    eyebrow: "La vraie question",
+    title: `Alors… est-ce que <em>j'ai une chance</em> ?`,
+    sub: "Sois honnête. C'est la seule question qui compte vraiment.",
+    options: [
+      ["❤️", "Oui. Clairement."],
+      ["😏", "Peut-être… si tu t'y prends bien"],
+      ["⏳", "Laisse-moi encore un peu de temps"],
+      ["🤍", "Je te vois plutôt comme un ami"]
+    ]
+  },
+  { type: "end" }
+];
+
+const answers = {};
+const questions = STEPS.filter(s => s.id);
+let current = 0;
+
+const stepsEl = document.getElementById("steps");
+const progressEl = document.getElementById("progress");
+
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+function render() {
+  const s = STEPS[current];
+  stepsEl.innerHTML = "";
+  const qIndex = questions.indexOf(s);
+  progressEl.classList.toggle("hidden", qIndex < 0);
+  progressEl.firstElementChild.style.width = qIndex < 0 ? "0" : ((qIndex + 1) / questions.length * 100) + "%";
+
+  let node;
+  if (s.type === "intro") node = renderIntro();
+  else if (s.type === "end") node = renderEnd();
+  else node = renderQuestion(s);
+  node.classList.add("step", "active");
+  stepsEl.appendChild(node);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function next() { current++; render(); burst(6); }
+
+function renderIntro() {
+  const n = el(`<div>
+    <div class="eyebrow">Un petit jeu ${her ? "pour " + escapeHtml(her) : "rien que pour toi"}</div>
+    <h1>Juste <em>entre nous</em>…</h1>
+    <p class="sub">${questions.length} questions. Aucune bonne ou mauvaise réponse — seulement des vraies.
+    À la fin, c'est toi qui décides de m'envoyer tes réponses… ou pas.</p>
+    <button class="btn">J'ose 😏</button>
+    <p class="hint">Ça prend 2 minutes. Et ça pourrait tout changer.</p>
+  </div>`);
+  n.querySelector(".btn").onclick = next;
+  return n;
+}
+
+function renderQuestion(s) {
+  const n = el(`<div>
+    <div class="eyebrow">${s.eyebrow}</div>
+    <h2>${s.title}</h2>
+    ${s.sub ? `<p class="sub">${s.sub}</p>` : `<div style="height:18px"></div>`}
+    <div class="body"></div>
+    <button class="btn next">${current === STEPS.length - 2 ? "Voilà, c'est dit" : "Suivant"}</button>
+  </div>`);
+  const body = n.querySelector(".body");
+  const btn = n.querySelector(".next");
+
+  if (s.type === "single" || s.type === "multi") {
+    const wrap = el(`<div class="options ${s.grid ? "grid2" : ""}"></div>`);
+    const chosen = new Set();
+    s.options.forEach(([emo, label]) => {
+      const b = el(`<button class="opt"><span class="emo">${emo}</span><span>${label}</span></button>`);
+      b.onclick = () => {
+        if (s.type === "single") {
+          wrap.querySelectorAll(".opt").forEach(o => o.classList.remove("on"));
+          chosen.clear();
+        }
+        if (chosen.has(label)) { chosen.delete(label); b.classList.remove("on"); }
+        else { chosen.add(label); b.classList.add("on"); }
+        answers[s.id] = [...chosen].join(", ");
+        btn.disabled = chosen.size === 0;
+        if (s.type === "single") setTimeout(() => btn.focus({ preventScroll: true }), 50);
+      };
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+    btn.disabled = true;
+  }
+
+  if (s.type === "slider") {
+    const w = el(`<div class="slider-wrap">
+      <div class="big-val"></div>
+      <div class="val-label"></div>
+      <input type="range" min="${s.min}" max="${s.max}" value="${s.start}" step="1">
+    </div>`);
+    const r = w.querySelector("input"), big = w.querySelector(".big-val"), lab = w.querySelector(".val-label");
+    const upd = () => {
+      const v = +r.value;
+      big.textContent = s.emojis ? s.emojis[v] : v;
+      lab.textContent = s.labels[v];
+      r.style.setProperty("--p", ((v - s.min) / (s.max - s.min) * 100) + "%");
+      answers[s.id] = s.showLabelOnly ? s.labels[v] : `${v}/10 — ${s.labels[v]}`;
+    };
+    r.oninput = upd; upd();
+    body.appendChild(w);
+  }
+
+  if (s.type === "text") {
+    const t = el(`<textarea placeholder="${s.placeholder}"></textarea>`);
+    t.oninput = () => { answers[s.id] = t.value.trim(); };
+    body.appendChild(t);
+  }
+
+  btn.onclick = next;
+  return n;
+}
+
+function renderEnd() {
+  const yes = (answers.chance || "").startsWith("Oui");
+  const friend = (answers.chance || "").includes("ami");
+  const title = yes ? `Tu viens de me rendre <em>très</em> heureux.`
+    : friend ? `Merci d'avoir été <em>honnête</em>.`
+    : `Intéressant… <em>très</em> intéressant.`;
+  const sub = yes ? "Maintenant, il ne te reste plus qu'à me l'envoyer. Je t'attends 😌"
+    : friend ? "Ça compte beaucoup pour moi. Envoie-moi tes réponses quand tu veux."
+    : "J'ai hâte de lire tout ça. Envoie-moi tes réponses — c'est toi qui décides.";
+
+  const n = el(`<div>
+    <div class="eyebrow">C'est fini</div>
+    <h2>${title}</h2>
+    <p class="sub">${sub}</p>
+    <div class="summary"></div>
+    <button class="btn send">Envoyer mes réponses à ${escapeHtml(me)} 💌</button>
+    <button class="btn ghost copy">Copier mes réponses</button>
+  </div>`);
+  const sum = n.querySelector(".summary");
+  questions.forEach(q => {
+    const a = answers[q.id];
+    if (!a) return;
+    const d = document.createElement("div");
+    d.innerHTML = `<b>${strip(q.title)}</b>`;
+    d.appendChild(document.createTextNode(a));
+    sum.appendChild(d);
+  });
+  n.querySelector(".send").onclick = send;
+  n.querySelector(".copy").onclick = () => copy(buildText());
+  if (yes) burst(40);
+  return n;
+}
+
+function buildText() {
+  let t = `💌 Mes réponses${her ? " (" + her + ")" : ""} :\n\n`;
+  questions.forEach(q => {
+    if (answers[q.id]) t += `• ${strip(q.title)}\n→ ${answers[q.id]}\n\n`;
+  });
+  return t.trim();
+}
+
+async function send() {
+  const text = buildText();
+  if (CONFIG.whatsapp) {
+    location.href = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
+    return;
+  }
+  if (navigator.share) {
+    try { await navigator.share({ text }); return; } catch (e) { if (e.name === "AbortError") return; }
+  }
+  location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t);
+    t.select(); document.execCommand("copy"); t.remove();
+  }
+  const toast = document.getElementById("toast");
+  toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
+function strip(html) { const d = document.createElement("div"); d.innerHTML = html; return d.textContent; }
+function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+/* Petits cœurs qui flottent */
+const heartsEl = document.getElementById("hearts");
+function spawnHeart() {
+  const h = document.createElement("span");
+  h.className = "heart";
+  h.textContent = Math.random() > .5 ? "♥" : "♡";
+  h.style.left = Math.random() * 100 + "vw";
+  h.style.fontSize = 10 + Math.random() * 18 + "px";
+  h.style.animationDuration = 7 + Math.random() * 7 + "s";
+  heartsEl.appendChild(h);
+  setTimeout(() => h.remove(), 15000);
+}
+function burst(n) { for (let i = 0; i < n; i++) setTimeout(spawnHeart, i * 60); }
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(spawnHeart, 900);
+
+render();
+</script>
+</body>
+</html>
