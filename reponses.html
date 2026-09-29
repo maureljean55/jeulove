@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Ses réponses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14070b; --bg-2: #2a0d16;
+    --card: rgba(255, 240, 243, 0.06); --card-border: rgba(255, 200, 212, 0.14);
+    --text: #fbeef1; --muted: #c9a3ad; --accent: #ff4f7b; --accent-2: #ffb199;
+    --chip: rgba(255, 255, 255, 0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "DM Sans", system-ui, sans-serif; color: var(--text);
+    background: radial-gradient(120% 90% at 50% 0%, var(--bg-2) 0%, var(--bg) 60%) fixed;
+    background-color: var(--bg); min-height: 100dvh; padding: 40px 16px 60px;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; }
+  h1 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: clamp(34px, 8vw, 44px); line-height: 1.1; margin-bottom: 8px; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 15px; margin-bottom: 28px; }
+  .login { display: flex; gap: 10px; }
+  input {
+    flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--text);
+    background: var(--chip); border: 1px solid var(--card-border); border-radius: 999px; padding: 14px 18px; outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    font: inherit; font-weight: 600; color: #fff; background: linear-gradient(120deg, var(--accent), #ff7a8f);
+    border: 0; border-radius: 999px; padding: 14px 22px; cursor: pointer;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--card-border); color: var(--muted); font-weight: 500; padding: 10px 16px; font-size: 14px; }
+  .error { color: #ff8fa8; font-size: 14px; margin-top: 12px; min-height: 20px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; color: var(--muted); font-size: 14px; }
+  .entry {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 24px;
+    padding: 24px 22px; margin-bottom: 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .entry-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .who { font-family: "Cormorant Garamond", serif; font-size: 26px; font-weight: 600; }
+  .when { color: var(--muted); font-size: 13px; }
+  .verdict {
+    border-radius: 16px; padding: 14px 16px; margin-bottom: 16px;
+    background: linear-gradient(120deg, rgba(255,79,123,.22), rgba(255,177,153,.12));
+    border: 1px solid rgba(255,79,123,.4);
+  }
+  .verdict small { display: block; color: var(--accent-2); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 4px; }
+  .verdict span { font-size: 17px; font-weight: 600; }
+  .qa { padding: 12px 0; border-top: 1px solid rgba(255,255,255,.06); }
+  .q { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .a { font-size: 15.5px; line-height: 1.5; white-space: pre-wrap; }
+  .empty { text-align: center; color: var(--muted); padding: 50px 0; font-style: italic; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ses <em>réponses</em></h1>
+  <p class="sub" id="sub">Entre ton mot de passe pour voir ce qu'elle a répondu.</p>
+
+  <form class="login" id="login">
+    <input type="password" id="pass" placeholder="Mot de passe" autocomplete="current-password" required>
+    <button type="submit">Voir</button>
+  </form>
+  <p class="error" id="error"></p>
+
+  <div id="list" class="hidden">
+    <div class="bar"><span id="count"></span><button class="ghost" id="refresh">Actualiser</button></div>
+    <div id="entries"></div>
+  </div>
+</div>
+
+<script>
+const CHANCE_KEY = "Alors… est-ce que j'ai une chance ?";
+const $ = id => document.getElementById(id);
+
+async function load(pass) {
+  $("error").textContent = "";
+  const r = await fetch("/api/responses", { headers: { "x-password": pass }, cache: "no-store" });
+  if (r.status === 401) { $("error").textContent = "Mot de passe incorrect."; return false; }
+  if (!r.ok) { $("error").textContent = "Impossible de charger les réponses. Réessaie."; return false; }
+  const { entries } = await r.json();
+  render(entries);
+  return true;
+}
+
+function render(entries) {
+  $("login").classList.add("hidden");
+  $("sub").classList.add("hidden");
+  $("list").classList.remove("hidden");
+  $("count").textContent = entries.length === 0 ? "" : `${entries.length} réponse${entries.length > 1 ? "s" : ""}`;
+  const box = $("entries");
+  box.innerHTML = "";
+  if (!entries.length) {
+    box.innerHTML = `<p class="empty">Pas encore de réponse… patience 😌</p>`;
+    return;
+  }
+  entries.forEach(e => {
+    const card = document.createElement("div");
+    card.className = "entry";
+    const date = new Date(e.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
+    card.innerHTML = `<div class="entry-head"><div class="who"></div><div class="when"></div></div>`;
+    card.querySelector(".who").textContent = e.pour || "Elle";
+    card.querySelector(".when").textContent = date;
+
+    const chance = e.answers[CHANCE_KEY];
+    if (chance) {
+      const v = document.createElement("div");
+      v.className = "verdict";
+      v.innerHTML = `<small>Est-ce que j'ai une chance ?</small><span></span>`;
+      v.querySelector("span").textContent = chance;
+      card.appendChild(v);
+    }
+    Object.entries(e.answers).forEach(([q, a]) => {
+      if (q === CHANCE_KEY) return;
+      const d = document.createElement("div");
+      d.className = "qa";
+      d.innerHTML = `<div class="q"></div><div class="a"></div>`;
+      d.querySelector(".q").textContent = q;
+      d.querySelector(".a").textContent = a;
+      card.appendChild(d);
+    });
+    box.appendChild(card);
+  });
+}
+
+function saved() { try { return sessionStorage.getItem("pass"); } catch { return null; } }
+
+$("login").onsubmit = async ev => {
+  ev.preventDefault();
+  const pass = $("pass").value;
+  if (await load(pass)) { try { sessionStorage.setItem("pass", pass); } catch {} }
+};
+$("refresh").onclick = () => load(saved() || $("pass").value);
+if (saved()) load(saved());
+</script>
+</body>
+</html>
